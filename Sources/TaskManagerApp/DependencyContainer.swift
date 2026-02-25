@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Common
 import Models
 import Networking
@@ -185,14 +186,22 @@ public final class DependencyContainer {
         )
     }
 
-    /// Creates a `DashboardViewModel` wired to the container's data service and tracker.
-    public func makeDashboardViewModel() -> DashboardViewModel {
+    /// Creates all dashboard view models wired to the container's data service and tracker.
+    public func makeDashboardViewModels() async -> DashboardViewModels {
         let dataService = MockDashboardDataService()
         let authGate = DashboardAuthGate()
-        return DashboardViewModel(
-            dataService: dataService,
-            authGate: authGate,
-            interactionTracker: interactionTracker
+        let currentUser = await authService.currentUser ?? User(email: "", displayName: "Unknown")
+        return DashboardViewModels(
+            root: DashboardViewModel(
+                dataService: dataService,
+                authGate: authGate,
+                currentUser: currentUser,
+                tracker: interactionTracker
+            ),
+            business: BusinessMetricsViewModel(dataService: dataService, tracker: interactionTracker),
+            performance: AppPerformanceViewModel(dataService: dataService, tracker: interactionTracker),
+            signals: InteractionSignalsViewModel(dataService: dataService, tracker: interactionTracker),
+            agentic: AgenticWorkViewModel(dataService: dataService, tracker: interactionTracker)
         )
     }
 
@@ -232,4 +241,16 @@ struct APISyncHandler: SyncHandler {
         let endpoint = Endpoint(path: path, method: method, body: operation.payload)
         try await apiClient.request(endpoint)
     }
+}
+
+// MARK: - DashboardViewModels
+
+/// Bundles all view models needed by the dashboard feature.
+@MainActor
+public struct DashboardViewModels {
+    public let root: DashboardViewModel
+    public let business: BusinessMetricsViewModel
+    public let performance: AppPerformanceViewModel
+    public let signals: InteractionSignalsViewModel
+    public let agentic: AgenticWorkViewModel
 }

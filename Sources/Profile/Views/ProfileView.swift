@@ -78,7 +78,7 @@ public struct ProfileView: View {
             }
             .overlay {
                 if viewModel.isLoading && viewModel.user != nil {
-                    LoadingOverlay(message: "Saving changes...")
+                    LoadingOverlay(isShowing: true)
                 }
             }
         }

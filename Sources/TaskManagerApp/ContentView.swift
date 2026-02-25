@@ -28,7 +28,7 @@ public struct MainTabView: View {
     @State private var projectListViewModel: ProjectListViewModel?
     @State private var profileViewModel: ProfileViewModel?
     @State private var settingsViewModel: SettingsViewModel?
-    @State private var dashboardViewModel: DashboardViewModel?
+    @State private var dashboardViewModels: DashboardViewModels?
 
     // MARK: - Init
 
@@ -59,7 +59,7 @@ public struct MainTabView: View {
                 .tag(AppTab.profile)
         }
         .task {
-            initializeViewModels()
+            await initializeViewModels()
         }
         .onChange(of: container.deepLinkHandler.hasPendingNavigation) { _, hasPending in
             if hasPending {
@@ -89,8 +89,14 @@ public struct MainTabView: View {
 
     private var dashboardTab: some View {
         Group {
-            if let viewModel = dashboardViewModel {
-                DashboardRootView(viewModel: viewModel)
+            if let vms = dashboardViewModels {
+                DashboardRootView(
+                    viewModel: vms.root,
+                    businessVM: vms.business,
+                    performanceVM: vms.performance,
+                    signalsVM: vms.signals,
+                    agenticVM: vms.agentic
+                )
             } else {
                 ProgressView()
             }
@@ -140,7 +146,7 @@ public struct MainTabView: View {
     // MARK: - Helpers
 
     /// Initializes view models on first appearance.
-    private func initializeViewModels() {
+    private func initializeViewModels() async {
         if notificationViewModel == nil {
             notificationViewModel = container.makeNotificationFeedViewModel()
         }
@@ -153,8 +159,8 @@ public struct MainTabView: View {
         if settingsViewModel == nil {
             settingsViewModel = container.makeSettingsViewModel()
         }
-        if dashboardViewModel == nil {
-            dashboardViewModel = container.makeDashboardViewModel()
+        if dashboardViewModels == nil {
+            dashboardViewModels = await container.makeDashboardViewModels()
         }
     }
 

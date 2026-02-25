@@ -259,14 +259,5 @@ struct NotificationRowView: View {
     }
 }
 
-// MARK: - ViewModel Extension for Error Clearing
-
-extension NotificationFeedViewModel {
-    /// Clears the current error message.
-    func clearError() {
-        errorMessage = nil
-    }
-}
-
 // Note: TrackInteractionModifier, InteractionTrackerKey, and the
 // .trackInteraction(screen:) view extension are provided by the Analytics module.

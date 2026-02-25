@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Models
 import Common
 import Analytics
@@ -144,6 +145,11 @@ public final class NotificationFeedViewModel {
                 category: .network
             )
         }
+    }
+
+    /// Clears the current error message.
+    public func clearError() {
+        errorMessage = nil
     }
 
     /// Refreshes the notification feed by reloading from the repository.

@@ -45,14 +45,14 @@ public struct UserRepository: UserRepositoryProtocol {
 
     // MARK: - Dependencies
 
-    private let apiClient: APIClientProtocol
+    private let apiClient: any APIClientProtocol
 
     // MARK: - Initializer
 
     /// Creates a `UserRepository` with the given API client.
     ///
     /// - Parameter apiClient: The API client for making network requests.
-    public init(apiClient: APIClientProtocol) {
+    public init(apiClient: any APIClientProtocol) {
         self.apiClient = apiClient
     }
 
