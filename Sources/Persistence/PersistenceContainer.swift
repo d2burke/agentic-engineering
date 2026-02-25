@@ -2,12 +2,15 @@ import Foundation
 import Common
 
 /// Protocol defining a generic persistence layer for storing and retrieving
-/// `Codable` and `Identifiable` entities.
+/// `Codable` and `Identifiable` entities by their unique identifier.
 ///
 /// Implementations must be `Sendable` to allow safe usage from concurrent
 /// async tasks and actors. The persistence layer is entity-type-agnostic:
 /// any conforming type can be stored and retrieved using its unique identifier.
-public protocol PersistenceManager: Sendable {
+///
+/// This protocol complements `PersistenceManagerProtocol` (key-value based)
+/// by providing identity-based CRUD operations suitable for domain entities.
+public protocol EntityPersistence: Sendable {
     /// Saves an entity to the persistent store.
     ///
     /// If an entity with the same identifier already exists, it is overwritten.
@@ -44,13 +47,13 @@ public protocol PersistenceManager: Sendable {
     func delete<T: Codable & Identifiable>(_ type: T.Type, id: UUID) async throws where T.ID == UUID
 }
 
-/// In-memory implementation of `PersistenceManager` for testing, previews,
+/// In-memory implementation of `EntityPersistence` for testing, previews,
 /// and lightweight caching scenarios.
 ///
 /// Data is stored as JSON-encoded `Data` blobs in a nested dictionary keyed
 /// by type name and entity identifier. All data is lost when the actor is
 /// deallocated.
-public actor InMemoryPersistenceManager: PersistenceManager {
+public actor InMemoryPersistenceManager: EntityPersistence {
     /// Backing store: [TypeName: [EntityID: EncodedData]]
     private var store: [String: [String: Data]] = [:]
 

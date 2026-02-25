@@ -187,6 +187,9 @@ public final class NotificationFeedViewModel {
             screen: screen,
             metadata: metadata
         )
-        tracker?.track(event)
+        guard let tracker else { return }
+        Task {
+            await tracker.track(event)
+        }
     }
 }

@@ -1,9 +1,16 @@
 import SwiftUI
 import Models
 
-/// A badge displaying a task priority level with an icon and color.
+// MARK: - PriorityBadge
+
+/// A compact badge showing a task's priority level with an SF Symbol
+/// icon and semantic color coding.
 ///
-/// Uses SF Symbols and color coding to communicate urgency at a glance.
+/// Color mapping:
+/// - **Low** → green (safe / no rush)
+/// - **Medium** → yellow (normal attention)
+/// - **High** → orange (elevated urgency)
+/// - **Critical** → red (immediate action required)
 public struct PriorityBadge: View {
     private let priority: TaskPriority
 
@@ -12,30 +19,43 @@ public struct PriorityBadge: View {
     }
 
     public var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: Spacing.xxs) {
             Image(systemName: priority.iconName)
-                .font(.caption2)
+                .font(Typography.caption)
             Text(priority.displayName)
-                .font(.caption2)
+                .font(Typography.caption)
                 .fontWeight(.medium)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .background(backgroundColor.opacity(0.12))
-        .foregroundStyle(backgroundColor)
+        .foregroundStyle(priorityColor)
+        .padding(.horizontal, Spacing.sm)
+        .padding(.vertical, Spacing.xs)
+        .background(priorityColor.opacity(0.12))
         .clipShape(Capsule())
     }
 
-    private var backgroundColor: Color {
+    private var priorityColor: Color {
         switch priority {
         case .low:
-            return .green
+            return ColorTokens.success
         case .medium:
-            return .blue
+            return ColorTokens.warning
         case .high:
             return .orange
         case .critical:
-            return .red
+            return ColorTokens.error
         }
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("Priority Badges") {
+    VStack(spacing: 12) {
+        ForEach(TaskPriority.allCases) { priority in
+            PriorityBadge(priority: priority)
+        }
+    }
+    .padding()
+}
+#endif

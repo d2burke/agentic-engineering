@@ -1,80 +1,132 @@
 import SwiftUI
 import Models
 
-/// A card component displaying a task's key information in a compact layout.
-///
-/// Used in both the Kanban board columns and list views. Displays the task title,
-/// priority badge, assignee avatar, and optional due date indicator.
-public struct TaskCard: View {
-    private let task: TaskItem
-    private let onTap: (() -> Void)?
+// MARK: - TaskCard
 
-    public init(task: TaskItem, onTap: (() -> Void)? = nil) {
-        self.task = task
-        self.onTap = onTap
+/// A card component displaying a task summary with status, priority,
+/// assignee, due date, and comment count.
+///
+/// Used in board columns, list views, and search results. The card
+/// uses the design system's color tokens, typography, and spacing
+/// for visual consistency.
+public struct TaskCard: View {
+    private let title: String
+    private let status: TaskStatus
+    private let priority: TaskPriority
+    private let assigneeName: String?
+    private let dueDate: Date?
+    private let commentCount: Int
+
+    /// - Parameters:
+    ///   - title: The task title.
+    ///   - status: Current lifecycle status.
+    ///   - priority: Task priority level.
+    ///   - assigneeName: Optional name of the assigned user.
+    ///   - dueDate: Optional due date.
+    ///   - commentCount: Number of comments on the task.
+    public init(
+        title: String,
+        status: TaskStatus,
+        priority: TaskPriority,
+        assigneeName: String? = nil,
+        dueDate: Date? = nil,
+        commentCount: Int = 0
+    ) {
+        self.title = title
+        self.status = status
+        self.priority = priority
+        self.assigneeName = assigneeName
+        self.dueDate = dueDate
+        self.commentCount = commentCount
     }
 
     public var body: some View {
-        Button {
-            onTap?()
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(task.title)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Color(.label))
-                        .lineLimit(2)
-                    Spacer()
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            // Title
+            Text(title)
+                .font(Typography.headline)
+                .foregroundStyle(ColorTokens.textPrimary)
+                .lineLimit(2)
+
+            // Status + Priority row
+            HStack(spacing: Spacing.sm) {
+                StatusBadge(status: status)
+                PriorityBadge(priority: priority)
+                Spacer()
+            }
+
+            // Bottom row: assignee, due date, comments
+            HStack(spacing: Spacing.sm) {
+                if let assigneeName = assigneeName {
+                    AvatarView(name: assigneeName, size: 24)
+                    Text(assigneeName)
+                        .font(Typography.caption)
+                        .foregroundStyle(ColorTokens.textSecondary)
+                        .lineLimit(1)
                 }
 
-                HStack(spacing: 6) {
-                    PriorityBadge(priority: task.priority)
+                Spacer()
 
-                    if !task.tags.isEmpty {
-                        Text(task.tags.first ?? "")
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundStyle(Color.blue)
-                            .clipShape(Capsule())
+                if let dueDate = dueDate {
+                    HStack(spacing: Spacing.xxs) {
+                        Image(systemName: "calendar")
+                            .font(Typography.caption)
+                        Text(dueDate, style: .date)
+                            .font(Typography.caption)
                     }
-
-                    Spacer()
-
-                    if let dueDate = task.dueDate {
-                        HStack(spacing: 2) {
-                            Image(systemName: "calendar")
-                                .font(.caption2)
-                            Text(dueDate, style: .date)
-                                .font(.caption2)
-                        }
-                        .foregroundStyle(dueDate < Date() ? Color.red : Color(.secondaryLabel))
-                    }
+                    .foregroundStyle(
+                        dueDate < Date() ? ColorTokens.error : ColorTokens.textSecondary
+                    )
                 }
 
-                if task.assigneeId != nil {
-                    HStack(spacing: 4) {
-                        AvatarView(name: "Assignee", size: 20)
-                        if task.commentCount > 0 {
-                            Spacer()
-                            HStack(spacing: 2) {
-                                Image(systemName: "bubble.left")
-                                    .font(.caption2)
-                                Text("\(task.commentCount)")
-                                    .font(.caption2)
-                            }
-                            .foregroundStyle(Color(.secondaryLabel))
-                        }
+                if commentCount > 0 {
+                    HStack(spacing: Spacing.xxs) {
+                        Image(systemName: "bubble.left")
+                            .font(Typography.caption)
+                        Text("\(commentCount)")
+                            .font(Typography.caption)
                     }
+                    .foregroundStyle(ColorTokens.textSecondary)
                 }
             }
-            .padding(12)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .shadow(color: Color.black.opacity(0.06), radius: 2, x: 0, y: 1)
         }
-        .buttonStyle(.plain)
+        .padding(Spacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: CornerRadius.medium)
+                .fill(ColorTokens.cardBackground)
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 3, x: 0, y: 1)
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("Task Card") {
+    VStack(spacing: 16) {
+        TaskCard(
+            title: "Implement user authentication flow",
+            status: .inProgress,
+            priority: .high,
+            assigneeName: "Alice Johnson",
+            dueDate: Date().addingTimeInterval(86400 * 3),
+            commentCount: 5
+        )
+
+        TaskCard(
+            title: "Fix login page crash on iPad",
+            status: .todo,
+            priority: .critical,
+            dueDate: Date().addingTimeInterval(-86400),
+            commentCount: 2
+        )
+
+        TaskCard(
+            title: "Update README documentation",
+            status: .done,
+            priority: .low
+        )
+    }
+    .padding()
+}
+#endif

@@ -1,20 +1,30 @@
 import SwiftUI
 
-/// A reusable empty state view displayed when a list or collection has no content.
+// MARK: - EmptyStateView
+
+/// A centered placeholder view displayed when a list or collection
+/// has no content.
 ///
-/// Shows a centered icon, title, optional message, and optional action button
-/// to guide the user toward creating their first item.
+/// Shows an SF Symbol icon, a title, a descriptive message, and an
+/// optional call-to-action button to guide the user toward their
+/// next step.
 public struct EmptyStateView: View {
     private let icon: String
     private let title: String
-    private let message: String?
+    private let message: String
     private let actionTitle: String?
     private let action: (() -> Void)?
 
+    /// - Parameters:
+    ///   - icon: An SF Symbol name displayed prominently above the title.
+    ///   - title: The primary empty-state headline.
+    ///   - message: A supporting description explaining why the view is empty.
+    ///   - actionTitle: Optional label for a call-to-action button.
+    ///   - action: Optional closure executed when the action button is tapped.
     public init(
         icon: String,
         title: String,
-        message: String? = nil,
+        message: String,
         actionTitle: String? = nil,
         action: (() -> Void)? = nil
     ) {
@@ -26,38 +36,55 @@ public struct EmptyStateView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Spacing.lg) {
             Image(systemName: icon)
                 .font(.system(size: 48))
-                .foregroundStyle(Color(.tertiaryLabel))
+                .foregroundStyle(ColorTokens.textTertiary)
 
-            Text(title)
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundStyle(Color(.label))
+            VStack(spacing: Spacing.sm) {
+                Text(title)
+                    .font(Typography.title3)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(ColorTokens.textPrimary)
 
-            if let message {
                 Text(message)
-                    .font(.subheadline)
-                    .foregroundStyle(Color(.secondaryLabel))
+                    .font(Typography.callout)
+                    .foregroundStyle(ColorTokens.textSecondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, Spacing.xxl)
             }
 
-            if let actionTitle, let action {
+            if let actionTitle = actionTitle, let action = action {
                 Button(action: action) {
                     Text(actionTitle)
-                        .fontWeight(.medium)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 10)
-                        .background(Color.blue)
+                        .font(Typography.headline)
+                        .padding(.horizontal, Spacing.xl)
+                        .padding(.vertical, Spacing.md)
+                        .background(
+                            RoundedRectangle(cornerRadius: CornerRadius.medium)
+                                .fill(ColorTokens.primary)
+                        )
                         .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .padding(.top, 8)
+                .padding(.top, Spacing.sm)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
+        .padding(Spacing.lg)
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("Empty State") {
+    EmptyStateView(
+        icon: "tray",
+        title: "No Tasks Yet",
+        message: "Create your first task to get started with project management.",
+        actionTitle: "Create Task"
+    ) {
+        // Action
+    }
+}
+#endif

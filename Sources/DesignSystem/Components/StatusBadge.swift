@@ -1,10 +1,16 @@
 import SwiftUI
 import Models
 
-/// A badge displaying a task status with a colored background.
+// MARK: - StatusBadge
+
+/// A colored pill badge displaying a task's lifecycle status.
 ///
-/// Provides visual differentiation between task lifecycle states
-/// using color-coded pill-shaped badges.
+/// Color mapping provides instant visual recognition:
+/// - **To Do** → gray (neutral, not started)
+/// - **In Progress** → blue (active work)
+/// - **In Review** → orange (awaiting feedback)
+/// - **Done** → green (completed)
+/// - **Archived** → secondary (historical)
 public struct StatusBadge: View {
     private let status: TaskStatus
 
@@ -14,10 +20,10 @@ public struct StatusBadge: View {
 
     public var body: some View {
         Text(status.displayName)
-            .font(.caption)
+            .font(Typography.caption)
             .fontWeight(.medium)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, Spacing.sm)
+            .padding(.vertical, Spacing.xs)
             .background(backgroundColor.opacity(0.15))
             .foregroundStyle(backgroundColor)
             .clipShape(Capsule())
@@ -28,13 +34,26 @@ public struct StatusBadge: View {
         case .todo:
             return .gray
         case .inProgress:
-            return .blue
+            return ColorTokens.info
         case .inReview:
-            return .orange
+            return ColorTokens.warning
         case .done:
-            return .green
+            return ColorTokens.success
         case .archived:
-            return .secondary
+            return ColorTokens.secondary
         }
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("Status Badges") {
+    VStack(spacing: 12) {
+        ForEach(TaskStatus.allCases) { status in
+            StatusBadge(status: status)
+        }
+    }
+    .padding()
+}
+#endif
