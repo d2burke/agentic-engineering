@@ -8,7 +8,6 @@ import Analytics
 // MARK: - Test Mock: DashboardDataService
 
 /// A mock data service for testing view model behavior without real data.
-@MainActor
 final class MockDashboardDataServiceForTests: DashboardDataServiceProtocol, @unchecked Sendable {
 
     var stubbedBusinessMetrics: BusinessMetrics?
