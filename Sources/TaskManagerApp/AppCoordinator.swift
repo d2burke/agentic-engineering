@@ -9,6 +9,7 @@ import Notifications
 /// The top-level tabs in the main application interface.
 public enum AppTab: String, CaseIterable, Identifiable, Hashable {
     case projects
+    case dashboard
     case notifications
     case profile
 
@@ -18,6 +19,7 @@ public enum AppTab: String, CaseIterable, Identifiable, Hashable {
     public var title: String {
         switch self {
         case .projects: return "Projects"
+        case .dashboard: return "Dashboard"
         case .notifications: return "Notifications"
         case .profile: return "Profile"
         }
@@ -27,6 +29,7 @@ public enum AppTab: String, CaseIterable, Identifiable, Hashable {
     public var icon: String {
         switch self {
         case .projects: return "folder.fill"
+        case .dashboard: return "chart.bar.xaxis"
         case .notifications: return "bell.fill"
         case .profile: return "person.fill"
         }

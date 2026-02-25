@@ -190,7 +190,46 @@ communication happens through Coordinators in the app target.
 - [ ] Unit tests for StatisticalEngine, GuardrailEvaluator, HypothesisGenerator
 - [ ] Integration test: end-to-end from signal → hypothesis → experiment → evaluation → integrate
 
-### Milestone 10 — Polish & Advanced
+### Milestone 10 — Authenticated Dashboard (Business, App, Agentic Monitoring)
+- [ ] Dashboard authentication gate (admin/owner role required)
+- [ ] **Business Metrics Panel**:
+  - [ ] Active users (DAU/WAU/MAU), user growth trend chart
+  - [ ] Projects created / active, tasks completed rate
+  - [ ] Team velocity (tasks completed per sprint/week)
+  - [ ] Task throughput by status (funnel: created → completed)
+  - [ ] Top contributors leaderboard
+- [ ] **App Performance Panel**:
+  - [ ] Crash rate trend, crash-free sessions percentage
+  - [ ] App launch time (P50/P95)
+  - [ ] Screen load times per feature
+  - [ ] Network request latency (P50/P95) and error rate
+  - [ ] Memory / CPU usage trends
+  - [ ] Offline queue depth and sync success rate
+- [ ] **Interaction Signals Panel** (feeds experimentation agent):
+  - [ ] Exceptional signal feed: live stream of rage taps, dead taps, abandons,
+        latency spikes with screen, severity, timestamp
+  - [ ] Signal heatmap: which screens generate most signals, by type
+  - [ ] Signal trend chart: signals over time, grouped by type
+  - [ ] Top friction points: ranked list of screen × signal type combinations
+  - [ ] Detector health: detection rate, false positive estimate per detector
+- [ ] **Agentic Work Panel**:
+  - [ ] Development pipeline status: planned/in-progress/completed features
+  - [ ] Experiment registry: all experiments with status, hypothesis, outcome
+  - [ ] Active experiments: live metrics, guardrail status, time remaining
+  - [ ] Experiment history: win rate, auto-integration rate, learnings
+  - [ ] Agent activity log: recent agent actions with timestamps
+  - [ ] Orchestration state: current pipeline phase, agent status
+- [ ] **Alerts & Notifications**:
+  - [ ] Configurable alert thresholds (crash rate spike, signal burst, etc.)
+  - [ ] In-dashboard alert banner for critical guardrail violations
+  - [ ] Experiment auto-integration notifications
+- [ ] Dashboard navigation: tab bar or sidebar for panel switching
+- [ ] Time range selector (24h, 7d, 30d, custom) across all panels
+- [ ] Role-based access: admin sees all, member sees app performance only
+- [ ] Unit tests for dashboard view models and metric computation
+- [ ] SwiftUI Charts integration for all trend visualizations
+
+### Milestone 11 — Polish & Advanced
 - [ ] Accessibility audit (VoiceOver, Dynamic Type)
 - [ ] Localization scaffolding (en, es, ja)
 - [ ] Widget extension (upcoming tasks)

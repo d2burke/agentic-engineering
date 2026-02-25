@@ -23,6 +23,7 @@ let package = Package(
         .library(name: "TaskDetail", targets: ["TaskDetail"]),
         .library(name: "Profile", targets: ["Profile"]),
         .library(name: "Notifications", targets: ["Notifications"]),
+        .library(name: "Dashboard", targets: ["Dashboard"]),
 
         // MARK: - App
         .library(name: "TaskManagerApp", targets: ["TaskManagerApp"]),
@@ -94,6 +95,11 @@ let package = Package(
             dependencies: ["Models", "Common", "Networking", "DesignSystem", "Analytics"]
         ),
 
+        .target(
+            name: "Dashboard",
+            dependencies: ["Models", "Common", "Networking", "Persistence", "DesignSystem", "Analytics"]
+        ),
+
         // MARK: - App Target
 
         .target(
@@ -101,7 +107,7 @@ let package = Package(
             dependencies: [
                 "Common", "Models", "Networking", "Persistence", "Analytics",
                 "DesignSystem", "Auth", "Projects", "TaskBoard", "TaskDetail",
-                "Profile", "Notifications",
+                "Profile", "Notifications", "Dashboard",
             ]
         ),
 
@@ -125,6 +131,7 @@ let package = Package(
         .testTarget(name: "TaskDetailTests", dependencies: ["TaskDetail", "Models", "Common", "TestSupport"]),
         .testTarget(name: "ProfileTests", dependencies: ["Profile", "Models", "Common", "TestSupport"]),
         .testTarget(name: "NotificationsTests", dependencies: ["Notifications", "Models", "Common", "Analytics", "TestSupport"]),
+        .testTarget(name: "DashboardTests", dependencies: ["Dashboard", "Models", "Common", "Analytics", "TestSupport"]),
         .testTarget(name: "DesignSystemTests", dependencies: ["DesignSystem", "Models"]),
     ]
 )

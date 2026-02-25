@@ -4,6 +4,7 @@ import Analytics
 import Projects
 import Notifications
 import Profile
+import Dashboard
 
 // MARK: - MainTabView
 
@@ -27,6 +28,7 @@ public struct MainTabView: View {
     @State private var projectListViewModel: ProjectListViewModel?
     @State private var profileViewModel: ProfileViewModel?
     @State private var settingsViewModel: SettingsViewModel?
+    @State private var dashboardViewModel: DashboardViewModel?
 
     // MARK: - Init
 
@@ -46,6 +48,9 @@ public struct MainTabView: View {
         TabView(selection: $coordinator.selectedTab) {
             projectsTab
                 .tag(AppTab.projects)
+
+            dashboardTab
+                .tag(AppTab.dashboard)
 
             notificationsTab
                 .tag(AppTab.notifications)
@@ -77,6 +82,21 @@ public struct MainTabView: View {
         }
         .tabItem {
             Label(AppTab.projects.title, systemImage: AppTab.projects.icon)
+        }
+    }
+
+    // MARK: - Dashboard Tab
+
+    private var dashboardTab: some View {
+        Group {
+            if let viewModel = dashboardViewModel {
+                DashboardRootView(viewModel: viewModel)
+            } else {
+                ProgressView()
+            }
+        }
+        .tabItem {
+            Label(AppTab.dashboard.title, systemImage: AppTab.dashboard.icon)
         }
     }
 
@@ -132,6 +152,9 @@ public struct MainTabView: View {
         }
         if settingsViewModel == nil {
             settingsViewModel = container.makeSettingsViewModel()
+        }
+        if dashboardViewModel == nil {
+            dashboardViewModel = container.makeDashboardViewModel()
         }
     }
 

@@ -8,6 +8,7 @@ import Auth
 import Projects
 import Profile
 import Notifications
+import Dashboard
 
 // MARK: - DependencyContainer
 
@@ -180,6 +181,17 @@ public final class DependencyContainer {
     public func makeProfileViewModel() -> ProfileViewModel {
         ProfileViewModel(
             userRepository: userRepository,
+            interactionTracker: interactionTracker
+        )
+    }
+
+    /// Creates a `DashboardViewModel` wired to the container's data service and tracker.
+    public func makeDashboardViewModel() -> DashboardViewModel {
+        let dataService = MockDashboardDataService()
+        let authGate = DashboardAuthGate()
+        return DashboardViewModel(
+            dataService: dataService,
+            authGate: authGate,
             interactionTracker: interactionTracker
         )
     }
