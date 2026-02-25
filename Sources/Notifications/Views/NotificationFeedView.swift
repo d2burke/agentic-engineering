@@ -86,7 +86,7 @@ public struct NotificationFeedView: View {
                     }
                     .listRowBackground(
                         notification.isRead
-                            ? Color(.systemBackground)
+                            ? Color.clear
                             : Color.blue.opacity(0.05)
                     )
             }
@@ -268,57 +268,5 @@ extension NotificationFeedViewModel {
     }
 }
 
-// MARK: - TrackInteractionModifier
-
-/// A view modifier that emits a navigation interaction event when the view
-/// appears, feeding the experimentation pipeline's signal stream.
-///
-/// Usage: `.trackInteraction(screen: "ScreenName")`
-public struct TrackInteractionModifier: ViewModifier {
-    /// The screen name to record for this interaction.
-    let screen: String
-
-    /// The interaction tracker injected from the environment.
-    @Environment(\.interactionTracker) private var tracker
-
-    public func body(content: Content) -> some View {
-        content
-            .task {
-                let event = InteractionEvent(
-                    type: .navigate,
-                    screen: screen,
-                    metadata: ["event_name": "screen_view"]
-                )
-                await tracker?.track(event)
-            }
-    }
-}
-
-// MARK: - View Extension
-
-public extension View {
-    /// Attaches interaction tracking to this view, emitting a navigation event
-    /// when the view appears.
-    ///
-    /// - Parameter screen: The screen identifier for analytics.
-    /// - Returns: A view with interaction tracking applied.
-    func trackInteraction(screen: String) -> some View {
-        modifier(TrackInteractionModifier(screen: screen))
-    }
-}
-
-// MARK: - InteractionTracker Environment Key
-
-/// Environment key for injecting the `InteractionTracking` instance
-/// into the SwiftUI view hierarchy.
-public struct InteractionTrackerKey: EnvironmentKey {
-    public static let defaultValue: (any InteractionTracking)? = nil
-}
-
-public extension EnvironmentValues {
-    /// The interaction tracker available to all views in the hierarchy.
-    var interactionTracker: (any InteractionTracking)? {
-        get { self[InteractionTrackerKey.self] }
-        set { self[InteractionTrackerKey.self] = newValue }
-    }
-}
+// Note: TrackInteractionModifier, InteractionTrackerKey, and the
+// .trackInteraction(screen:) view extension are provided by the Analytics module.

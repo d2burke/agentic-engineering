@@ -91,12 +91,12 @@ public struct NotificationRepository: NotificationRepositoryProtocol {
 
     public func markAsRead(id: UUID) async throws {
         let endpoint = NotificationEndpoints.markRead(id: id)
-        try await apiClient.request(endpoint) as EmptyResponse
+        try await apiClient.request(endpoint)
     }
 
     public func markAllAsRead() async throws {
         let endpoint = NotificationEndpoints.markAllRead()
-        try await apiClient.request(endpoint) as EmptyResponse
+        try await apiClient.request(endpoint)
     }
 
     public var unreadCount: Int {
@@ -117,9 +117,6 @@ public struct NotificationRepository: NotificationRepositoryProtocol {
 }
 
 // MARK: - Response Types
-
-/// An empty response body used for endpoints that return no meaningful payload.
-private struct EmptyResponse: Decodable, Sendable {}
 
 /// Response body for the unread-count endpoint.
 private struct UnreadCountResponse: Decodable, Sendable {

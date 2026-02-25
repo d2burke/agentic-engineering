@@ -108,7 +108,7 @@ public final class PushNotificationService: PushNotificationServiceProtocol, @un
         let body = try encoder.encode(payload)
 
         let endpoint = NotificationEndpoints.registerDevice(body: body)
-        try await apiClient.request(endpoint) as DeviceRegistrationResponse
+        try await apiClient.request(endpoint)
 
         AppLogger.info("Device token registered successfully", category: .network)
     }
@@ -120,9 +120,4 @@ public final class PushNotificationService: PushNotificationServiceProtocol, @un
 private struct DeviceTokenPayload: Encodable, Sendable {
     let token: String
     let platform: String
-}
-
-/// Response from the device registration endpoint.
-private struct DeviceRegistrationResponse: Decodable, Sendable {
-    // The server may return an ID or status; we only need to confirm success.
 }

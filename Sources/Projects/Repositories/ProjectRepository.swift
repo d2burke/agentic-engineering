@@ -172,7 +172,7 @@ public struct ProjectRepository: ProjectRepositoryProtocol {
             path: "/projects/\(id.uuidString)",
             method: .delete
         )
-        try await apiClient.request(endpoint) as Void
+        try await apiClient.request(endpoint)
 
         var cachedProjects: [Project] = try await persistence.load(forKey: Self.cacheKey)
         cachedProjects.removeAll { $0.id == id }

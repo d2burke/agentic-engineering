@@ -1,8 +1,8 @@
 import Foundation
+import Observation
 import Models
 import Common
 import Analytics
-import Networking
 
 // MARK: - ProfileViewModel
 

@@ -124,6 +124,7 @@ let package = Package(
         .testTarget(name: "TaskBoardTests", dependencies: ["TaskBoard", "Models", "Common", "TestSupport"]),
         .testTarget(name: "TaskDetailTests", dependencies: ["TaskDetail", "Models", "Common", "TestSupport"]),
         .testTarget(name: "ProfileTests", dependencies: ["Profile", "Models", "Common", "TestSupport"]),
-        .testTarget(name: "NotificationsTests", dependencies: ["Notifications", "Models", "Common", "TestSupport"]),
+        .testTarget(name: "NotificationsTests", dependencies: ["Notifications", "Models", "Common", "Analytics", "TestSupport"]),
+        .testTarget(name: "DesignSystemTests", dependencies: ["DesignSystem", "Models"]),
     ]
 )
