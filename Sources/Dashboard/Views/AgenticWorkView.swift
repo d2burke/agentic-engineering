@@ -71,7 +71,7 @@ public struct AgenticWorkView: View {
 
             HStack(spacing: Spacing.xl) {
                 VStack(spacing: Spacing.xxs) {
-                    Text("\(viewModel.metrics?.orchestrationState.activeAgents ?? 0)")
+                    Text("\(viewModel.activeAgentCount)")
                         .font(Typography.title2)
                         .foregroundStyle(ColorTokens.primary)
 
