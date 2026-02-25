@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Task Manager — UI Prototype</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: { DEFAULT: '#0066FF', light: '#4D94FF', muted: '#0066FF15' },
+        accent: { DEFAULT: '#8B5CF6', light: '#A78BFA', muted: '#8B5CF615' },
+        success: { DEFAULT: '#10B981', light: '#34D399', muted: '#10B98115' },
+        warning: { DEFAULT: '#F59E0B', light: '#FBBF24', muted: '#F59E0B15' },
+        error: { DEFAULT: '#EF4444', light: '#F87171', muted: '#EF444415' },
+        info: { DEFAULT: '#3B82F6', light: '#60A5FA', muted: '#3B82F615' },
+        surface: { DEFAULT: '#FFFFFF', secondary: '#F9FAFB', tertiary: '#F3F4F6' },
+        txt: { primary: '#111827', secondary: '#6B7280', tertiary: '#9CA3AF' },
+        border: '#E5E7EB',
+      },
+      fontFamily: { sf: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"Segoe UI"', 'Roboto', 'sans-serif'] },
+    }
+  }
+}
+</script>
+<style>
+  * { -webkit-font-smoothing: antialiased; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+  .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+  .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+  .mini-chart { position: relative; }
+  .gradient-mask { mask-image: linear-gradient(to bottom, black 60%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%); }
+</style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+/* ───────────────────────── Shared Data ───────────────────────── */
+
+const AVATARS = {
+  'Alice Wang':    { initials: 'AW', bg: 'bg-blue-500' },
+  'Bob Chen':      { initials: 'BC', bg: 'bg-emerald-500' },
+  'Carol Davis':   { initials: 'CD', bg: 'bg-orange-500' },
+  'Dan Kim':       { initials: 'DK', bg: 'bg-purple-500' },
+  'Eva Lopez':     { initials: 'EL', bg: 'bg-pink-500' },
+  'Frank Ito':     { initials: 'FI', bg: 'bg-teal-500' },
+};
+
+const Avatar = ({ name, size = 'w-8 h-8 text-xs' }) => {
+  const a = AVATARS[name] || { initials: name.split(' ').map(w => w[0]).join('').slice(0,2), bg: 'bg-gray-400' };
+  return <div className={`${size} ${a.bg} rounded-full flex items-center justify-center text-white font-semibold shrink-0`}>{a.initials}</div>;
+};
+
+const StatusBadge = ({ status }) => {
+  const map = {
+    'To Do':       'bg-gray-100 text-gray-600',
+    'In Progress': 'bg-blue-50 text-blue-600',
+    'In Review':   'bg-orange-50 text-orange-600',
+    'Done':        'bg-emerald-50 text-emerald-600',
+  };
+  return <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${map[status] || 'bg-gray-100 text-gray-500'}`}>{status}</span>;
+};
+
+const PriorityBadge = ({ priority }) => {
+  const map = {
+    'Critical': { cls: 'text-red-600 bg-red-50', icon: 'fa-circle-exclamation' },
+    'High':     { cls: 'text-orange-600 bg-orange-50', icon: 'fa-arrow-up' },
+    'Medium':   { cls: 'text-yellow-600 bg-yellow-50', icon: 'fa-minus' },
+    'Low':      { cls: 'text-green-600 bg-green-50', icon: 'fa-arrow-down' },
+  };
+  const m = map[priority] || map['Medium'];
+  return <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${m.cls}`}><i className={`fa-solid ${m.icon} text-[9px]`}/>{priority}</span>;
+};
+
+/* ───────────────── Mini SVG Charts ───────────────── */
+
+const SparkLine = ({ data, color = '#0066FF', fill = false, w = 120, h = 32 }) => {
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * (h - 4) - 2}`).join(' ');
+  const fillPts = `0,${h} ${pts} ${w},${h}`;
+  return (
+    <svg width={w} height={h} className="overflow-visible">
+      {fill && <polygon points={fillPts} fill={color} opacity="0.1" />}
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+};
+
+const BarChart = ({ data, colors, w = 200, h = 80 }) => {
+  const max = Math.max(...data.map(d => d.value));
+  const bw = Math.min(24, (w - data.length * 4) / data.length);
+  return (
+    <svg width={w} height={h + 20}>
+      {data.map((d, i) => {
+        const bh = (d.value / max) * h;
+        const x = i * (bw + 8) + 4;
+        return (
+          <g key={i}>
+            <rect x={x} y={h - bh} width={bw} height={bh} rx="3" fill={d.color || colors?.[i] || '#0066FF'} opacity="0.85" />
+            <text x={x + bw / 2} y={h + 14} textAnchor="middle" fontSize="9" fill="#9CA3AF">{d.label}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+};
+
+const DonutChart = ({ segments, size = 64 }) => {
+  const r = 24; const cx = size/2; const cy = size/2; const circ = 2 * Math.PI * r;
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  let offset = 0;
+  return (
+    <svg width={size} height={size}>
+      {segments.map((seg, i) => {
+        const pct = seg.value / total;
+        const dash = pct * circ;
+        const el = <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={seg.color} strokeWidth="10" strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={-offset} transform={`rotate(-90 ${cx} ${cy})`} />;
+        offset += dash;
+        return el;
+      })}
+      <text x={cx} y={cy + 1} textAnchor="middle" fontSize="11" fontWeight="600" fill="#111827">{total}</text>
+      <text x={cx} y={cy + 11} textAnchor="middle" fontSize="7" fill="#9CA3AF">tasks</text>
+    </svg>
+  );
+};
+
+const HeatCell = ({ value, max }) => {
+  const intensity = max > 0 ? value / max : 0;
+  const bg = intensity === 0 ? 'bg-gray-50' : intensity < 0.25 ? 'bg-yellow-100' : intensity < 0.5 ? 'bg-yellow-300' : intensity < 0.75 ? 'bg-orange-400' : 'bg-red-500';
+  const text = intensity >= 0.5 ? 'text-white' : 'text-gray-700';
+  return <div className={`w-10 h-8 rounded flex items-center justify-center text-[10px] font-medium ${bg} ${text}`}>{value > 0 ? value : ''}</div>;
+};
+
+/* ───────────────── Metric Card ───────────────── */
+
+const MetricCard = ({ icon, label, value, trend, trendUp, small }) => (
+  <div className={`bg-white rounded-xl border border-gray-100 shadow-sm ${small ? 'p-3 min-w-[130px]' : 'p-4 min-w-[155px]'} flex flex-col gap-1`}>
+    <div className="flex items-center gap-1.5 text-txt-secondary">
+      <i className={`fa-solid ${icon} text-[10px]`}/>
+      <span className="text-[11px] font-medium">{label}</span>
+    </div>
+    <div className="text-xl font-bold text-txt-primary leading-tight">{value}</div>
+    {trend && (
+      <div className={`text-[11px] font-medium ${trendUp ? 'text-emerald-600' : 'text-red-500'}`}>
+        <i className={`fa-solid ${trendUp ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'} text-[9px] mr-0.5`}/>
+        {trend}
+      </div>
+    )}
+  </div>
+);
+
+/* ───────────────── Tab Shell ───────────────── */
+
+const PhoneFrame = ({ children }) => (
+  <div className="w-[390px] h-[844px] bg-white rounded-[44px] shadow-2xl border border-gray-200 overflow-hidden flex flex-col relative">
+    {/* status bar */}
+    <div className="h-[54px] px-8 flex items-end justify-between pb-1.5 bg-surface-secondary shrink-0">
+      <span className="text-[13px] font-semibold text-txt-primary">9:41</span>
+      <div className="flex items-center gap-1.5 text-txt-primary">
+        <i className="fa-solid fa-signal text-[11px]"/>
+        <i className="fa-solid fa-wifi text-[11px]"/>
+        <i className="fa-solid fa-battery-full text-[13px]"/>
+      </div>
+    </div>
+    <div className="flex-1 overflow-hidden flex flex-col">
+      {children}
+    </div>
+    {/* home indicator */}
+    <div className="h-[22px] flex items-center justify-center shrink-0 bg-white">
+      <div className="w-[134px] h-[5px] bg-gray-900 rounded-full opacity-20"/>
+    </div>
+  </div>
+);
+
+/* ───────────────────────── PROJECTS TAB ───────────────────────── */
+
+const projects = [
+  { name: 'Mobile App Redesign', desc: 'Complete iOS redesign with new design system and Swift architecture', members: ['Alice Wang', 'Bob Chen', 'Carol Davis', 'Dan Kim', 'Eva Lopez'], time: '2h ago', tasks: 24, completed: 18 },
+  { name: 'Backend API v2', desc: 'Migrate REST endpoints to new versioned API with improved auth', members: ['Bob Chen', 'Frank Ito', 'Dan Kim'], time: '5h ago', tasks: 16, completed: 9 },
+  { name: 'Design System', desc: 'Unified component library with tokens, typography, and theme support', members: ['Carol Davis', 'Alice Wang'], time: '1d ago', tasks: 12, completed: 12 },
+  { name: 'Analytics Pipeline', desc: 'Real-time event ingestion, signal detection, and dashboard reporting', members: ['Dan Kim', 'Eva Lopez', 'Frank Ito'], time: '2d ago', tasks: 19, completed: 7 },
+  { name: 'Push Notifications', desc: 'Permission flow, device registration, and deep link handling', members: ['Eva Lopez', 'Bob Chen'], time: '3d ago', tasks: 8, completed: 5 },
+];
+
+const ProjectsTab = () => (
+  <div className="flex flex-col h-full bg-surface-secondary">
+    {/* nav bar */}
+    <div className="px-4 pt-2 pb-3 bg-surface-secondary">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-[28px] font-bold text-txt-primary">Projects</h1>
+        <button className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center shadow-sm">
+          <i className="fa-solid fa-plus text-sm"/>
+        </button>
+      </div>
+      {/* search */}
+      <div className="flex items-center gap-2 bg-surface-tertiary rounded-xl px-3 py-2">
+        <i className="fa-solid fa-magnifying-glass text-txt-tertiary text-xs"/>
+        <span className="text-sm text-txt-tertiary">Search projects...</span>
+      </div>
+    </div>
+    {/* list */}
+    <div className="flex-1 overflow-y-auto px-4 pb-4 hide-scrollbar">
+      <div className="flex flex-col gap-3">
+        {projects.map((p, i) => (
+          <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 active:scale-[0.98] transition-transform cursor-pointer">
+            <div className="flex items-start justify-between mb-1.5">
+              <h3 className="text-[15px] font-semibold text-txt-primary leading-snug">{p.name}</h3>
+              <i className="fa-solid fa-chevron-right text-[10px] text-txt-tertiary mt-1.5"/>
+            </div>
+            <p className="text-[13px] text-txt-secondary leading-relaxed mb-3 line-clamp-2">{p.desc}</p>
+            {/* progress */}
+            <div className="mb-3">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[11px] text-txt-secondary font-medium">{p.completed}/{p.tasks} tasks</span>
+                <span className="text-[11px] text-txt-tertiary">{Math.round(p.completed/p.tasks*100)}%</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${(p.completed/p.tasks)*100}%` }}/>
+              </div>
+            </div>
+            {/* footer */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                {p.members.slice(0, 4).map((m, j) => (
+                  <div key={j} className={j > 0 ? '-ml-1.5' : ''}>
+                    <Avatar name={m} size="w-6 h-6 text-[9px]" />
+                  </div>
+                ))}
+                {p.members.length > 4 && <span className="text-[10px] text-txt-tertiary ml-1.5">+{p.members.length - 4}</span>}
+              </div>
+              <span className="text-[11px] text-txt-tertiary">{p.time}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+/* ───────────────────────── DASHBOARD TAB ───────────────────────── */
+
+const DashboardTab = () => {
+  const [panel, setPanel] = useState('business');
+  const panels = [
+    { key: 'business', label: 'Business', icon: 'fa-chart-pie' },
+    { key: 'performance', label: 'Performance', icon: 'fa-gauge-high' },
+    { key: 'signals', label: 'Signals', icon: 'fa-tower-broadcast' },
+    { key: 'agentic', label: 'Agentic', icon: 'fa-robot' },
+  ];
+
+  return (
+    <div className="flex flex-col h-full bg-surface-secondary">
+      {/* header */}
+      <div className="px-4 pt-2 pb-2 bg-surface-secondary">
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-[28px] font-bold text-txt-primary">Dashboard</h1>
+          <div className="flex items-center gap-1 bg-surface-tertiary rounded-lg p-0.5">
+            {['7D', '14D', '30D'].map(r => (
+              <button key={r} className={`text-[10px] font-semibold px-2.5 py-1 rounded-md transition-all ${r === '7D' ? 'bg-white shadow-sm text-brand' : 'text-txt-tertiary'}`}>{r}</button>
+            ))}
+          </div>
+        </div>
+        {/* alert banner */}
+        <div className="bg-warning/10 border border-warning/30 rounded-xl px-3 py-2 flex items-center gap-2 mb-2">
+          <i className="fa-solid fa-triangle-exclamation text-warning text-xs"/>
+          <span className="text-[11px] text-yellow-800 font-medium flex-1">Crash rate exceeded 1% threshold on TaskBoard</span>
+          <button className="text-txt-tertiary"><i className="fa-solid fa-xmark text-[10px]"/></button>
+        </div>
+        {/* panel tabs */}
+        <div className="flex gap-1">
+          {panels.map(p => (
+            <button key={p.key} onClick={() => setPanel(p.key)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold transition-all ${panel === p.key ? 'bg-brand text-white shadow-sm' : 'bg-white text-txt-secondary border border-gray-100'}`}>
+              <i className={`fa-solid ${p.icon} text-[10px]`}/>{p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 pb-4 hide-scrollbar">
+        {panel === 'business' && <BusinessPanel />}
+        {panel === 'performance' && <PerformancePanel />}
+        {panel === 'signals' && <SignalsPanel />}
+        {panel === 'agentic' && <AgenticPanel />}
+      </div>
+    </div>
+  );
+};
+
+const BusinessPanel = () => (
+  <div className="flex flex-col gap-3 pt-3">
+    {/* KPIs */}
+    <div className="flex gap-2 overflow-x-auto hide-scrollbar -mx-1 px-1">
+      <MetricCard icon="fa-users" label="DAU" value="1,247" trend="+5.2%" trendUp small />
+      <MetricCard icon="fa-users" label="WAU" value="4,892" trend="+3.1%" trendUp small />
+      <MetricCard icon="fa-users" label="MAU" value="12.4K" trend="+8.4%" trendUp small />
+    </div>
+    {/* user growth chart */}
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <h3 className="text-[13px] font-semibold text-txt-primary mb-1">User Growth</h3>
+      <p className="text-[11px] text-txt-tertiary mb-3">Daily active users — last 7 days</p>
+      <SparkLine data={[980, 1020, 1050, 1120, 1090, 1180, 1247]} color="#0066FF" fill w={310} h={64} />
+      <div className="flex justify-between mt-2 text-[9px] text-txt-tertiary">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+    </div>
+    {/* task throughput */}
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <h3 className="text-[13px] font-semibold text-txt-primary mb-1">Task Throughput</h3>
+      <p className="text-[11px] text-txt-tertiary mb-3">Created vs completed this week</p>
+      <div className="flex items-end gap-3">
+        <BarChart w={310} h={60} data={[
+          { label: 'Mon', value: 18, color: '#0066FF' },
+          { label: '', value: 14, color: '#10B981' },
+          { label: 'Tue', value: 22, color: '#0066FF' },
+          { label: '', value: 19, color: '#10B981' },
+          { label: 'Wed', value: 15, color: '#0066FF' },
+          { label: '', value: 20, color: '#10B981' },
+          { label: 'Thu', value: 25, color: '#0066FF' },
+          { label: '', value: 17, color: '#10B981' },
+          { label: 'Fri', value: 20, color: '#0066FF' },
+          { label: '', value: 22, color: '#10B981' },
+        ]} />
+      </div>
+      <div className="flex items-center gap-4 mt-2">
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded bg-brand"/><span className="text-[10px] text-txt-secondary">Created</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded bg-emerald-500"/><span className="text-[10px] text-txt-secondary">Completed</span></div>
+      </div>
+    </div>
+    {/* status distribution + top contributors side by side */}
+    <div className="flex gap-3">
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex-1">
+        <h3 className="text-[13px] font-semibold text-txt-primary mb-3">Status</h3>
+        <div className="flex items-center justify-center">
+          <DonutChart segments={[
+            { value: 24, color: '#0066FF' },
+            { value: 18, color: '#F59E0B' },
+            { value: 31, color: '#10B981' },
+            { value: 12, color: '#9CA3AF' },
+          ]} size={80} />
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
+          {[['In Progress', '#0066FF', 24], ['Review', '#F59E0B', 18], ['Done', '#10B981', 31], ['To Do', '#9CA3AF', 12]].map(([l, c, v]) => (
+            <div key={l} className="flex items-center gap-1"><div className="w-2 h-2 rounded-full" style={{background: c}}/><span className="text-[9px] text-txt-secondary">{l} ({v})</span></div>
+          ))}
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex-1">
+        <h3 className="text-[13px] font-semibold text-txt-primary mb-3">Top Contributors</h3>
+        {[['Alice Wang', 42, '🥇'], ['Bob Chen', 38, '🥈'], ['Carol Davis', 31, '🥉']].map(([name, count, medal], i) => (
+          <div key={i} className="flex items-center gap-2 mb-2 last:mb-0">
+            <span className="text-sm">{medal}</span>
+            <Avatar name={name} size="w-5 h-5 text-[8px]" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-medium text-txt-primary truncate">{name}</p>
+              <p className="text-[9px] text-txt-tertiary">{count} tasks</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const PerformancePanel = () => (
+  <div className="flex flex-col gap-3 pt-3">
+    <div className="grid grid-cols-2 gap-2">
+      <MetricCard icon="fa-shield-halved" label="Crash-Free" value="99.2%" trend="+0.1%" trendUp small />
+      <MetricCard icon="fa-rocket" label="Launch" value="1.8s" trend="-0.2s" trendUp small />
+      <MetricCard icon="fa-wifi" label="Net Errors" value="0.3%" trend="-0.1%" trendUp small />
+      <MetricCard icon="fa-rotate" label="Sync Rate" value="98.5%" trend="+1.2%" trendUp small />
+    </div>
+    {/* crash trend */}
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <h3 className="text-[13px] font-semibold text-txt-primary mb-1">Crash Rate Trend</h3>
+      <p className="text-[11px] text-txt-tertiary mb-3">Percentage of sessions with crashes</p>
+      <SparkLine data={[1.2, 1.1, 0.9, 1.3, 1.0, 0.8, 0.8]} color="#EF4444" fill w={310} h={56} />
+      <div className="flex justify-between mt-2 text-[9px] text-txt-tertiary">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+    </div>
+    {/* screen load times */}
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <h3 className="text-[13px] font-semibold text-txt-primary mb-1">Screen Load Times</h3>
+      <p className="text-[11px] text-txt-tertiary mb-3">P50 and P95 latency (ms)</p>
+      {[['Dashboard', 320, 580], ['TaskBoard', 280, 520], ['Projects', 180, 350], ['Profile', 120, 210]].map(([screen, p50, p95]) => (
+        <div key={screen} className="flex items-center gap-2 mb-2">
+          <span className="text-[11px] text-txt-secondary w-20 text-right">{screen}</span>
+          <div className="flex-1 flex items-center gap-1">
+            <div className="h-4 bg-brand/80 rounded" style={{ width: `${(p50/600)*100}%` }}/>
+            <div className="h-4 bg-brand/25 rounded" style={{ width: `${((p95-p50)/600)*100}%` }}/>
+          </div>
+          <span className="text-[10px] text-txt-tertiary w-16">{p50} / {p95}</span>
+        </div>
+      ))}
+      <div className="flex items-center gap-4 mt-1">
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded bg-brand/80"/><span className="text-[10px] text-txt-secondary">P50</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded bg-brand/25"/><span className="text-[10px] text-txt-secondary">P95</span></div>
+      </div>
+    </div>
+    {/* resource usage */}
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <h3 className="text-[13px] font-semibold text-txt-primary mb-1">Resource Usage</h3>
+      <p className="text-[11px] text-txt-tertiary mb-3">Memory and CPU over time</p>
+      <div className="relative">
+        <SparkLine data={[120, 135, 128, 142, 138, 145, 140]} color="#8B5CF6" w={310} h={48} />
+        <div className="absolute top-0 left-0">
+          <SparkLine data={[22, 35, 28, 45, 32, 38, 30]} color="#F59E0B" w={310} h={48} />
+        </div>
+      </div>
+      <div className="flex items-center gap-4 mt-2">
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded bg-accent"/><span className="text-[10px] text-txt-secondary">Memory (MB)</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded bg-warning"/><span className="text-[10px] text-txt-secondary">CPU (%)</span></div>
+      </div>
+    </div>
+  </div>
+);
+
+const signalFeed = [
+  { type: 'RageTap', screen: 'TaskBoard', desc: '4 taps in 0.6s on submit button', severity: 'high', time: '2m ago', color: 'text-red-500 bg-red-50', icon: 'fa-hand-pointer' },
+  { type: 'DeadTap', screen: 'Projects', desc: 'No response within 450ms', severity: 'medium', time: '5m ago', color: 'text-orange-500 bg-orange-50', icon: 'fa-circle-dot' },
+  { type: 'Abandon', screen: 'Settings', desc: 'Left screen after 2.1s, 0 interactions', severity: 'low', time: '12m ago', color: 'text-purple-500 bg-purple-50', icon: 'fa-person-walking-arrow-right' },
+  { type: 'RageTap', screen: 'Login', desc: '3 taps in 0.9s on sign-in button', severity: 'high', time: '18m ago', color: 'text-red-500 bg-red-50', icon: 'fa-hand-pointer' },
+  { type: 'LatencySpike', screen: 'Dashboard', desc: 'Load time 3.2s (threshold 2s)', severity: 'medium', time: '25m ago', color: 'text-pink-500 bg-pink-50', icon: 'fa-clock' },
+  { type: 'DeadTap', screen: 'TaskDetail', desc: 'Tap on disabled save, no feedback', severity: 'low', time: '32m ago', color: 'text-orange-500 bg-orange-50', icon: 'fa-circle-dot' },
+];
+
+const SignalsPanel = () => {
+  const [filter, setFilter] = useState('All');
+  const filters = ['All', 'RageTap', 'DeadTap', 'Abandon', 'Latency'];
+  const filtered = filter === 'All' ? signalFeed : signalFeed.filter(s => s.type.startsWith(filter.replace('Latency','Latency')));
+
+  return (
+    <div className="flex flex-col gap-3 pt-3">
+      {/* signal rate */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center justify-between">
+        <div>
+          <p className="text-[11px] text-txt-secondary font-medium"><i className="fa-solid fa-tower-broadcast text-[10px] mr-1"/>Signal Rate</p>
+          <p className="text-2xl font-bold text-txt-primary">12.4<span className="text-sm font-normal text-txt-tertiary">/hr</span></p>
+        </div>
+        <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 rounded-full px-3 py-1.5">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"/>
+          <span className="text-[11px] font-semibold">Live</span>
+        </div>
+      </div>
+      {/* filters */}
+      <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
+        {filters.map(f => (
+          <button key={f} onClick={() => setFilter(f)} className={`text-[11px] font-semibold px-3 py-1.5 rounded-full whitespace-nowrap transition-all ${filter === f ? 'bg-brand text-white' : 'bg-white text-txt-secondary border border-gray-200'}`}>{f}</button>
+        ))}
+      </div>
+      {/* feed */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+        {filtered.map((s, i) => (
+          <div key={i} className="px-4 py-3 flex items-start gap-3">
+            <div className={`w-8 h-8 rounded-lg ${s.color} flex items-center justify-center shrink-0 mt-0.5`}>
+              <i className={`fa-solid ${s.icon} text-xs`}/>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className={`text-[11px] font-semibold ${s.color.split(' ')[0]}`}>{s.type}</span>
+                <span className="text-[10px] text-txt-tertiary">·</span>
+                <span className="text-[11px] text-txt-secondary">{s.screen}</span>
+              </div>
+              <p className="text-[12px] text-txt-secondary leading-snug">{s.desc}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${s.severity === 'high' ? 'bg-red-50 text-red-600' : s.severity === 'medium' ? 'bg-yellow-50 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>{s.severity.toUpperCase()}</span>
+                <span className="text-[10px] text-txt-tertiary">{s.time}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* heatmap */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <h3 className="text-[13px] font-semibold text-txt-primary mb-3">Signal Heatmap</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className="text-[9px] text-txt-tertiary font-medium text-left pb-2 w-20"/>
+                <th className="text-[9px] text-txt-tertiary font-medium pb-2">Rage</th>
+                <th className="text-[9px] text-txt-tertiary font-medium pb-2">Dead</th>
+                <th className="text-[9px] text-txt-tertiary font-medium pb-2">Abandon</th>
+                <th className="text-[9px] text-txt-tertiary font-medium pb-2">Latency</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[['TaskBoard', 24, 8, 3, 1], ['Login', 12, 15, 6, 5], ['Projects', 6, 2, 8, 2], ['Settings', 1, 0, 14, 0], ['Profile', 2, 1, 3, 0]].map(([screen, ...vals]) => (
+                <tr key={screen}>
+                  <td className="text-[10px] text-txt-secondary font-medium py-0.5 pr-2">{screen}</td>
+                  {vals.map((v, j) => <td key={j} className="py-0.5 px-0.5"><HeatCell value={v} max={24}/></td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center gap-1 mt-2 justify-end">
+          <span className="text-[8px] text-txt-tertiary">Low</span>
+          {['bg-gray-50', 'bg-yellow-100', 'bg-yellow-300', 'bg-orange-400', 'bg-red-500'].map((c,i) => <div key={i} className={`w-4 h-2.5 rounded-sm ${c}`}/>)}
+          <span className="text-[8px] text-txt-tertiary">High</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AgenticPanel = () => (
+  <div className="flex flex-col gap-3 pt-3">
+    {/* orchestration status */}
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[13px] font-semibold text-txt-primary">Orchestration</h3>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand">EXECUTING</span>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="text-center">
+          <p className="text-lg font-bold text-txt-primary">2</p>
+          <p className="text-[10px] text-txt-tertiary">Active Agents</p>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-bold text-txt-primary">5</p>
+          <p className="text-[10px] text-txt-tertiary">Pending Tasks</p>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-bold text-txt-primary">3m</p>
+          <p className="text-[10px] text-txt-tertiary">Last Activity</p>
+        </div>
+      </div>
+    </div>
+    {/* pipeline kanban */}
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <h3 className="text-[13px] font-semibold text-txt-primary mb-3">Development Pipeline</h3>
+      <div className="flex gap-2 overflow-x-auto hide-scrollbar -mx-1 px-1 pb-1">
+        {[
+          { status: 'Planned', color: 'bg-gray-100 text-gray-600', items: [{ name: 'Dark Mode', milestone: 'M7' }, { name: 'Widgets', milestone: 'M11' }] },
+          { status: 'In Progress', color: 'bg-blue-50 text-blue-600', items: [{ name: 'API v2', milestone: 'M5' }] },
+          { status: 'Review', color: 'bg-orange-50 text-orange-600', items: [{ name: 'Search', milestone: 'M6' }] },
+          { status: 'Done', color: 'bg-emerald-50 text-emerald-600', items: [{ name: 'Auth', milestone: 'M1' }, { name: 'Core', milestone: 'M0' }] },
+        ].map(col => (
+          <div key={col.status} className="min-w-[130px] bg-surface-tertiary rounded-xl p-2">
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${col.color}`}>{col.status}</span>
+              <span className="text-[10px] text-txt-tertiary">{col.items.length}</span>
+            </div>
+            {col.items.map((item, i) => (
+              <div key={i} className="bg-white rounded-lg p-2 mb-1.5 last:mb-0 shadow-sm border border-gray-50">
+                <p className="text-[11px] font-medium text-txt-primary">{item.name}</p>
+                <p className="text-[9px] text-txt-tertiary">{item.milestone}</p>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+    {/* experiment stats */}
+    <div className="grid grid-cols-4 gap-2">
+      {[['Total', '23', 'fa-flask'], ['Win Rate', '68%', 'fa-trophy'], ['Auto-Int', '12', 'fa-wand-magic-sparkles'], ['This Week', '5', 'fa-calendar-week']].map(([label, val, icon]) => (
+        <div key={label} className="bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm text-center">
+          <i className={`fa-solid ${icon} text-[10px] text-brand mb-1`}/>
+          <p className="text-[15px] font-bold text-txt-primary">{val}</p>
+          <p className="text-[9px] text-txt-tertiary">{label}</p>
+        </div>
+      ))}
+    </div>
+    {/* active experiment */}
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <h3 className="text-[13px] font-semibold text-txt-primary mb-3">Active Experiment</h3>
+      <div className="bg-surface-secondary rounded-xl p-3 border border-gray-100">
+        <div className="flex items-start justify-between mb-1">
+          <p className="text-[12px] font-semibold text-txt-primary">Simplified Onboarding Flow</p>
+          <span className="text-[9px] text-txt-tertiary whitespace-nowrap">4d left</span>
+        </div>
+        <p className="text-[10px] text-txt-secondary mb-2 italic">"Reducing steps will decrease abandon rate"</p>
+        {/* progress */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-brand rounded-full" style={{ width: '62%' }}/>
+          </div>
+          <span className="text-[10px] font-semibold text-brand">62%</span>
+        </div>
+        {/* metric bars */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[10px] text-txt-secondary w-12">Control</span>
+          <div className="flex-1 h-3 bg-gray-100 rounded"><div className="h-full bg-gray-400 rounded" style={{ width: '28%' }}/></div>
+          <span className="text-[10px] text-txt-tertiary">28%</span>
+        </div>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[10px] text-txt-secondary w-12">Variant</span>
+          <div className="flex-1 h-3 bg-brand/10 rounded"><div className="h-full bg-brand rounded" style={{ width: '34%' }}/></div>
+          <span className="text-[10px] font-semibold text-brand">34%</span>
+        </div>
+        {/* guardrails */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-txt-secondary">Guardrails:</span>
+          <div className="flex gap-1">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"/>
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"/>
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"/>
+          </div>
+          <span className="text-[10px] text-txt-tertiary">2/3 passing</span>
+        </div>
+      </div>
+    </div>
+    {/* agent activity */}
+    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+      <h3 className="text-[13px] font-semibold text-txt-primary mb-3">Agent Activity</h3>
+      {[
+        { role: 'Analyzer', action: 'Detected rage-tap pattern on TaskBoard', time: '3m', status: 'bg-emerald-500' },
+        { role: 'Designer', action: 'Created experiment #24', time: '15m', status: 'bg-brand' },
+        { role: 'Runner', action: 'Experiment #21 concluded — winner', time: '1h', status: 'bg-emerald-500' },
+        { role: 'Evaluator', action: 'Guardrail warning on experiment #23', time: '2h', status: 'bg-yellow-400' },
+      ].map((a, i) => (
+        <div key={i} className="flex items-start gap-2.5 mb-3 last:mb-0">
+          <div className="flex flex-col items-center">
+            <div className={`w-2.5 h-2.5 rounded-full ${a.status} shrink-0 mt-1`}/>
+            {i < 3 && <div className="w-px h-full bg-gray-200 mt-1"/>}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-semibold text-brand bg-brand/10 px-1.5 py-0.5 rounded">{a.role}</span>
+              <span className="text-[10px] text-txt-tertiary">{a.time} ago</span>
+            </div>
+            <p className="text-[11px] text-txt-secondary mt-0.5">{a.action}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/* ───────────────────────── NOTIFICATIONS TAB ───────────────────────── */
+
+const notifications = [
+  { type: 'Task Assigned', body: 'You were assigned "Fix Login Bug" by Alice Wang', time: '2h ago', icon: 'fa-user-plus', color: 'bg-blue-50 text-blue-500', unread: true },
+  { type: 'Comment', body: 'Bob Chen commented on "API Integration": "Looks good, merging now"', time: '5h ago', icon: 'fa-comment', color: 'bg-emerald-50 text-emerald-500', unread: true },
+  { type: 'Mentioned', body: 'Carol Davis mentioned you in "Design Review" discussion', time: '8h ago', icon: 'fa-at', color: 'bg-purple-50 text-purple-500', unread: true },
+  { type: 'Task Updated', body: '"Dark Mode Toggle" moved to In Review by Dan Kim', time: '1d ago', icon: 'fa-pen', color: 'bg-orange-50 text-orange-500', unread: false },
+  { type: 'Project Invite', body: 'Eva Lopez invited you to "Analytics Pipeline" project', time: '1d ago', icon: 'fa-envelope', color: 'bg-indigo-50 text-indigo-500', unread: false },
+  { type: 'Task Assigned', body: 'You were assigned "Update User Profile API" by Frank Ito', time: '2d ago', icon: 'fa-user-plus', color: 'bg-blue-50 text-blue-500', unread: false },
+  { type: 'Comment', body: 'Alice Wang replied to your comment on "Search Implementation"', time: '2d ago', icon: 'fa-comment', color: 'bg-emerald-50 text-emerald-500', unread: false },
+  { type: 'Task Updated', body: '"Push Notification Flow" marked as Done by Bob Chen', time: '3d ago', icon: 'fa-pen', color: 'bg-orange-50 text-orange-500', unread: false },
+];
+
+const NotificationsTab = () => (
+  <div className="flex flex-col h-full bg-surface-secondary">
+    <div className="px-4 pt-2 pb-3 bg-surface-secondary">
+      <div className="flex items-center justify-between">
+        <h1 className="text-[28px] font-bold text-txt-primary">Notifications</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-semibold text-brand bg-brand/10 px-2.5 py-1 rounded-full">3 unread</span>
+          <button className="text-[13px] font-medium text-brand">Mark All</button>
+        </div>
+      </div>
+    </div>
+    <div className="flex-1 overflow-y-auto hide-scrollbar">
+      {notifications.map((n, i) => (
+        <div key={i} className={`px-4 py-3.5 flex items-start gap-3 border-b border-gray-50 ${n.unread ? 'bg-brand/[0.03]' : ''}`}>
+          <div className={`w-9 h-9 rounded-xl ${n.color} flex items-center justify-center shrink-0`}>
+            <i className={`fa-solid ${n.icon} text-sm`}/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className={`text-[12px] font-semibold text-txt-primary ${n.unread ? '' : 'font-medium'}`}>{n.type}</span>
+              {n.unread && <div className="w-2 h-2 rounded-full bg-brand shrink-0"/>}
+            </div>
+            <p className="text-[13px] text-txt-secondary leading-snug line-clamp-2">{n.body}</p>
+            <p className="text-[11px] text-txt-tertiary mt-1">{n.time}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/* ───────────────────────── PROFILE TAB ───────────────────────── */
+
+const ProfileTab = () => (
+  <div className="flex flex-col h-full bg-surface-secondary">
+    <div className="px-4 pt-2 pb-3 bg-surface-secondary flex items-center justify-between">
+      <h1 className="text-[28px] font-bold text-txt-primary">Profile</h1>
+      <button className="w-8 h-8 rounded-full bg-surface-tertiary flex items-center justify-center">
+        <i className="fa-solid fa-gear text-sm text-txt-secondary"/>
+      </button>
+    </div>
+    <div className="flex-1 overflow-y-auto px-4 pb-4 hide-scrollbar">
+      {/* avatar card */}
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col items-center mb-4">
+        <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3">AW</div>
+        <h2 className="text-[18px] font-bold text-txt-primary">Alice Wang</h2>
+        <p className="text-[13px] text-txt-secondary">alice@company.com</p>
+        <span className="text-[11px] font-medium text-brand bg-brand/10 px-3 py-1 rounded-full mt-2">Team Lead</span>
+      </div>
+      {/* details */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 mb-4">
+        {[
+          ['Display Name', 'Alice Wang', 'fa-user'],
+          ['Email', 'alice@company.com', 'fa-envelope'],
+          ['Role', 'Team Lead', 'fa-shield-halved'],
+          ['Member Since', 'January 10, 2026', 'fa-calendar'],
+          ['Projects', '5 active', 'fa-folder'],
+          ['Tasks Completed', '42 this month', 'fa-check-circle'],
+        ].map(([label, value, icon]) => (
+          <div key={label} className="px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-surface-tertiary flex items-center justify-center">
+              <i className={`fa-solid ${icon} text-xs text-txt-tertiary`}/>
+            </div>
+            <div className="flex-1">
+              <p className="text-[11px] text-txt-tertiary">{label}</p>
+              <p className="text-[13px] font-medium text-txt-primary">{value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* settings preview */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+        <h3 className="text-[13px] font-semibold text-txt-primary px-4 pt-3 pb-2">Quick Settings</h3>
+        {[
+          ['Dark Mode', 'fa-moon', false],
+          ['Push Notifications', 'fa-bell', true],
+          ['Biometric Login', 'fa-fingerprint', true],
+        ].map(([label, icon, on]) => (
+          <div key={label} className="px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-surface-tertiary flex items-center justify-center">
+              <i className={`fa-solid ${icon} text-xs text-txt-tertiary`}/>
+            </div>
+            <span className="flex-1 text-[13px] text-txt-primary">{label}</span>
+            <div className={`w-[42px] h-[26px] rounded-full flex items-center px-0.5 transition-colors ${on ? 'bg-brand justify-end' : 'bg-gray-200 justify-start'}`}>
+              <div className="w-[22px] h-[22px] rounded-full bg-white shadow-sm"/>
+            </div>
+          </div>
+        ))}
+        <div className="px-4 py-3 flex items-center gap-3 cursor-pointer">
+          <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+            <i className="fa-solid fa-arrow-right-from-bracket text-xs text-red-500"/>
+          </div>
+          <span className="flex-1 text-[13px] text-red-500 font-medium">Sign Out</span>
+          <i className="fa-solid fa-chevron-right text-[10px] text-txt-tertiary"/>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+/* ───────────────────────── APP ───────────────────────── */
+
+const App = () => {
+  const [tab, setTab] = useState('projects');
+  const tabs = [
+    { key: 'projects', label: 'Projects', icon: 'fa-folder', activeIcon: 'fa-folder-open' },
+    { key: 'dashboard', label: 'Dashboard', icon: 'fa-chart-bar', activeIcon: 'fa-chart-bar' },
+    { key: 'notifications', label: 'Notifs', icon: 'fa-bell', activeIcon: 'fa-bell', badge: 3 },
+    { key: 'profile', label: 'Profile', icon: 'fa-user', activeIcon: 'fa-user' },
+  ];
+
+  return (
+    <div className="flex flex-col items-center gap-6">
+      <h1 className="text-2xl font-bold text-gray-800">Task Manager — UI Prototype</h1>
+      <p className="text-sm text-gray-500 -mt-4">Click tabs to navigate. Fully interactive.</p>
+      <PhoneFrame>
+        <div className="flex-1 overflow-hidden">
+          {tab === 'projects' && <ProjectsTab />}
+          {tab === 'dashboard' && <DashboardTab />}
+          {tab === 'notifications' && <NotificationsTab />}
+          {tab === 'profile' && <ProfileTab />}
+        </div>
+        {/* tab bar */}
+        <div className="bg-white/95 backdrop-blur-xl border-t border-gray-100 px-2 pt-1.5 pb-1 flex justify-around shrink-0">
+          {tabs.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} className="flex flex-col items-center gap-0.5 min-w-[60px] relative py-1">
+              <div className="relative">
+                <i className={`fa-solid ${tab === t.key ? t.activeIcon : t.icon} text-[18px] ${tab === t.key ? 'text-brand' : 'text-txt-tertiary'}`}/>
+                {t.badge && <div className="absolute -top-1.5 -right-2.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center"><span className="text-[9px] font-bold text-white">{t.badge}</span></div>}
+              </div>
+              <span className={`text-[10px] font-medium ${tab === t.key ? 'text-brand' : 'text-txt-tertiary'}`}>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </PhoneFrame>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
