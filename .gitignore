@@ -44,3 +44,6 @@ credentials.json
 # Test artifacts
 *.xcresult
 coverage/
+
+# Local prototypes
+docs/prototype.html
