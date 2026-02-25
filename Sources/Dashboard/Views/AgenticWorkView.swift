@@ -59,7 +59,7 @@ public struct AgenticWorkView: View {
                 Spacer()
 
                 // Phase badge
-                let phase = viewModel.metrics?.orchestrationState.currentPhase ?? "UNKNOWN"
+                let phase = viewModel.orchestrationPhase
                 Text(phase)
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .padding(.horizontal, Spacing.sm)
@@ -241,7 +241,7 @@ public struct AgenticWorkView: View {
                 .font(Typography.headline)
                 .foregroundStyle(ColorTokens.textPrimary)
 
-            let activeExperiments = viewModel.metrics?.activeExperiments ?? []
+            let activeExperiments = viewModel.activeExperimentsList
 
             if activeExperiments.isEmpty {
                 Text("No experiments currently running")
@@ -345,7 +345,7 @@ public struct AgenticWorkView: View {
                 .font(Typography.headline)
                 .foregroundStyle(ColorTokens.textPrimary)
 
-            let activities = viewModel.metrics?.agentActivityLog ?? []
+            let activities = viewModel.recentAgentActivity
 
             if activities.isEmpty {
                 Text("No agent activity recorded")

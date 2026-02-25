@@ -85,7 +85,7 @@ public struct AppPerformanceView: View {
     /// Line chart of crash rate over time.
     private var crashRateTrendChart: some View {
         TimeSeriesChart(
-            data: viewModel.metrics?.crashTrend ?? [],
+            data: viewModel.crashTrendChartData,
             title: "Crash Rate Trend",
             color: ColorTokens.error,
             showArea: true
@@ -180,7 +180,7 @@ public struct AppPerformanceView: View {
             seriesData: [
                 (
                     label: "P50",
-                    data: viewModel.metrics?.networkMetrics.latencyTrend ?? [],
+                    data: viewModel.networkLatencyTrendChartData,
                     color: ColorTokens.info
                 ),
             ]
@@ -196,12 +196,12 @@ public struct AppPerformanceView: View {
             seriesData: [
                 (
                     label: "Memory (MB)",
-                    data: viewModel.metrics?.memoryUsage ?? [],
+                    data: viewModel.memoryUsageChartData,
                     color: ColorTokens.accent
                 ),
                 (
                     label: "CPU (%)",
-                    data: viewModel.metrics?.cpuUsage ?? [],
+                    data: viewModel.cpuUsageChartData,
                     color: ColorTokens.warning
                 ),
             ]

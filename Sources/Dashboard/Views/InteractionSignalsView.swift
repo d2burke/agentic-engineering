@@ -57,7 +57,7 @@ public struct InteractionSignalsView: View {
             MetricCard(
                 title: "Signals / Hour",
                 value: viewModel.formattedSignalRate,
-                subtitle: "\(viewModel.metrics?.totalSignals ?? 0) total signals",
+                subtitle: "\(viewModel.formattedTotalSignals) total signals",
                 icon: "waveform.path.ecg"
             )
 
@@ -102,7 +102,7 @@ public struct InteractionSignalsView: View {
                 HStack(spacing: Spacing.sm) {
                     // "All" chip
                     filterChip(label: "All", isSelected: viewModel.selectedSignalType == nil) {
-                        viewModel.selectedSignalType = nil
+                        viewModel.filterBySignalType(nil)
                     }
 
                     // Per-type chips
@@ -111,7 +111,7 @@ public struct InteractionSignalsView: View {
                             label: signalTypeName(type),
                             isSelected: viewModel.selectedSignalType == type
                         ) {
-                            viewModel.selectedSignalType = type
+                            viewModel.filterBySignalType(type)
                         }
                     }
                 }
@@ -194,7 +194,7 @@ public struct InteractionSignalsView: View {
     /// Grid visualization of signals by screen and type.
     private var signalHeatmap: some View {
         HeatmapGrid(
-            data: viewModel.metrics?.signalsByScreen ?? [],
+            data: viewModel.heatmapData,
             signalTypes: [.rageTap, .deadTap, .abandon, .latencySpike]
         )
     }
@@ -204,7 +204,7 @@ public struct InteractionSignalsView: View {
     /// Multi-line chart showing each signal type over time.
     private var signalTrendsChart: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
-            let trends = viewModel.metrics?.signalTrends ?? []
+            let trends = viewModel.trendChartData
 
             if trends.isEmpty {
                 Text("No trend data available")
@@ -234,7 +234,7 @@ public struct InteractionSignalsView: View {
                 .font(Typography.headline)
                 .foregroundStyle(ColorTokens.textPrimary)
 
-            let frictionPoints = viewModel.metrics?.topFrictionPoints ?? []
+            let frictionPoints = viewModel.frictionPointsRanked
 
             if frictionPoints.isEmpty {
                 Text("No friction points detected")
@@ -301,7 +301,7 @@ public struct InteractionSignalsView: View {
                 .font(Typography.headline)
                 .foregroundStyle(ColorTokens.textPrimary)
 
-            let detectors = viewModel.metrics?.detectorHealth ?? []
+            let detectors = viewModel.detectorHealthRanked
 
             if detectors.isEmpty {
                 Text("No detector data available")
